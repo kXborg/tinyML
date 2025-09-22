@@ -1,9 +1,10 @@
 #include <ArduinoBLE.h>
-#include <Arduino_TensorFlowLite.h>
+#include <TensorFlowLite.h>
 #include "digit_model.h"  // generated from xxd
 
 #include "tensorflow/lite/micro/all_ops_resolver.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
+#include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
 
@@ -16,13 +17,22 @@ uint8_t imageBuffer[64];
 int bufferIndex = 0;
 
 // TensorFlow Lite setup
-const tflite::Model* model = tflite::GetModel(digit_model_tflite);
-tflite::MicroAllOpsResolver resolver;
+const tflite::Model* model = tflite::GetModel(__digit_model_int8_tflite);
+tflite::AllOpsResolver resolver;
 constexpr int tensorArenaSize = 8 * 1024;  // 8 KB
 uint8_t tensorArena[tensorArenaSize];
+
+// Error reporter
+tflite::MicroErrorReporter micro_error_reporter;
+tflite::ErrorReporter* error_reporter = &micro_error_reporter;
+
 tflite::MicroInterpreter* interpreter;
 TfLiteTensor* input;
 TfLiteTensor* output;
+
+extern "C" void DebugLog(const char* s) {
+  Serial.print(s);
+}
 
 void setup() {
   Serial.begin(115200);
@@ -41,18 +51,30 @@ void setup() {
   BLE.advertise();
   Serial.println("BLE advertising started...");
 
+  // Print MAC address
+  Serial.print("BLE MAC Address: ");
+  Serial.println(BLE.address());
+
   // TensorFlow Lite
-  static tflite::MicroInterpreter static_interpreter(model, resolver, tensorArena, tensorArenaSize);
+  static tflite::MicroInterpreter static_interpreter(
+      model, resolver, tensorArena, tensorArenaSize, error_reporter);
   interpreter = &static_interpreter;
-  interpreter->AllocateTensors();
+
+  if (interpreter->AllocateTensors() != kTfLiteOk) {
+    Serial.println("AllocateTensors() failed!");
+    while (1);
+  }
+
   input = interpreter->input(0);
   output = interpreter->output(0);
 }
 
 void classifyDigit() {
-  // Copy imageBuffer into input tensor (normalize 0-1)
-  for (int i = 0; i < 64; i++) {
-    input->data.f[i] = imageBuffer[i] / 255.0f;
+  if (input->type == kTfLiteFloat32) {
+    for (int i = 0; i < 64; i++) input->data.f[i] = imageBuffer[i] / 255.0f;
+  } 
+  else if (input->type == kTfLiteInt8) {
+    for (int i = 0; i < 64; i++) input->data.int8[i] = (int8_t)(imageBuffer[i] - 128);
   }
 
   if (interpreter->Invoke() != kTfLiteOk) {
@@ -62,11 +84,24 @@ void classifyDigit() {
 
   // Find predicted digit
   int maxIndex = 0;
-  float maxVal = output->data.f[0];
-  for (int i = 1; i < 10; i++) {
-    if (output->data.f[i] > maxVal) {
-      maxVal = output->data.f[i];
-      maxIndex = i;
+  float maxVal = -128.0f;
+
+  if (output->type == kTfLiteFloat32) {
+    maxVal = output->data.f[0];
+    for (int i = 1; i < 10; i++) {
+      if (output->data.f[i] > maxVal) {
+        maxVal = output->data.f[i];
+        maxIndex = i;
+      }
+    }
+  } 
+  else if (output->type == kTfLiteInt8) {
+    for (int i = 0; i < 10; i++) {
+      float val = (output->data.int8[i] - output->params.zero_point) * output->params.scale;
+      if (val > maxVal) {
+        maxVal = val;
+        maxIndex = i;
+      }
     }
   }
 
