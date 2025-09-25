@@ -70,6 +70,7 @@ void setup() {
 }
 
 void classifyDigit() {
+  Serial.println("Running classification...");
   if (input->type == kTfLiteFloat32) {
     for (int i = 0; i < 64; i++) input->data.f[i] = imageBuffer[i] / 255.0f;
   } 
@@ -123,11 +124,16 @@ void loop() {
         int len = imageChar.valueLength();
         const uint8_t* data = imageChar.value();
 
+        Serial.print("Received chunk of ");
+        Serial.print(len);
+        Serial.println(" bytes");
+
         for (int i = 0; i < len; i++) {
           if (bufferIndex < 64) {
             imageBuffer[bufferIndex++] = data[i];
           }
         }
+        Serial.println();
 
         if (bufferIndex >= 64) {
           bufferIndex = 0;
