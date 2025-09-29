@@ -18,7 +18,7 @@ const tflite::Model* model;
 tflite::MicroInterpreter* interpreter;
 TfLiteTensor* input;
 TfLiteTensor* output;
-constexpr int tensorArenaSize = 40 * 1024;  // adjust depending on model
+constexpr int tensorArenaSize = 60 * 1024;  // adjust depending on model
 uint8_t tensorArena[tensorArenaSize];
 
 extern "C" void DebugLog(const char* s) {
@@ -27,17 +27,13 @@ extern "C" void DebugLog(const char* s) {
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial);
-
   model = tflite::GetModel(digits_model_quant_19k);
   interpreter = new tflite::MicroInterpreter(model, resolver, tensorArena, tensorArenaSize, &tflErrorReporter);
-
-  interpreter->AllocateTensors();
-  input = interpreter->input(0);
-  output = interpreter->output(0);
-
+  TfLiteStatus status = interpreter->AllocateTensors();
+  if (status != kTfLiteOk) Serial.println("Tensor allocation failed!");
   Serial.println("Ready for image");
 }
+
 
 void loop() {
   // Check if enough bytes have arrived
