@@ -1,5 +1,5 @@
 ## tinyML
-In this repository, we experiment on various Microcontrollers and push their ML capability to the very edge.
+In this repository, we experiment on various Microcontrollers and push their ML capability to the very edge. Working on Arduino Nano 33 BLE now.
 
 ![Arm Family](Arm-family.jpg)
 
