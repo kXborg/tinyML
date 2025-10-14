@@ -1,9 +1,9 @@
 #include <ArduinoBLE.h>
 #include <TensorFlowLite.h>
-#include "digits_model_28x28_int8_augmented_realworld.h"
+#include "digits_model_cnn_small_int8.h"
 #include "tensorflow/lite/micro/all_ops_resolver.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
-#include "tensorflow/lite/micro/tflite_bridge/micro_error_reporter.h"
+#include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
 #include <Arduino.h>
@@ -21,7 +21,7 @@ const tflite::Model* model;
 tflite::MicroInterpreter* interpreter;
 TfLiteTensor* input;
 TfLiteTensor* output;
-constexpr int tensorArenaSize = 30 * 1024;
+constexpr int tensorArenaSize = 50 * 1024;
 uint8_t tensorArena[tensorArenaSize];
 
 // BLE configuration
@@ -61,7 +61,7 @@ void setup() {
   Serial.println("BLE Device Active, Waiting for Connection...");
 
   Serial.println("Initializing TensorFlow Lite...");
-  model = tflite::GetModel(digits_model_28x28_int8_augmented_realworld);
+  model = tflite::GetModel(digits_model_cnn_small_int8_tflite);
   if (model->version() != TFLITE_SCHEMA_VERSION) {
     Serial.println("Model schema mismatch!");
     while (1);
