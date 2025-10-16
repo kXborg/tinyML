@@ -5,9 +5,7 @@ import numpy as np
 from PIL import Image
 from bleak import BleakClient
 
-# -----------------------------
 # 🔧 BLE configuration
-# -----------------------------
 DEVICE_ADDR = "84:45:7d:35:39:74"  # <-- Replace with your board's BLE MAC
 IMG_UUID = "19b10001-e8f2-537e-4f6c-d104768a1214"     # image write characteristic
 RESULT_UUID = "19b10002-e8f2-537e-4f6c-d104768a1214"  # result notify characteristic
@@ -16,9 +14,7 @@ TARGET_SIZE = (28, 28)
 PREVIEW_SIZE = (128, 128)
 CHUNK = 128  # BLE write chunk size in bytes (safe for Nano 33 BLE)
 
-# -----------------------------
-# 📤 Send image to BLE + wait for prediction
-# -----------------------------
+# Send image to BLE + wait for prediction
 async def send_image_ble(image_path):
     # 1️⃣ Load image and resize to match model input
     img = Image.open(image_path).convert("L").resize(TARGET_SIZE)
